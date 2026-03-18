@@ -1422,7 +1422,7 @@ export default function CalendarConverter() {
       <style>{STYLES}</style>
       <div className="app">
         <aside className="sidebar">
-          <div className="sidebar-logo"><div className="logo-mark"><div className="logo-dot"/><span>CalConvert</span></div><div className="logo-sub">Event Manager</div></div>
+          <div className="sidebar-logo"><div className="logo-mark"><div className="logo-dot"/><span>GEP</span></div><div className="logo-sub">Gabe's Event Planning</div></div>
           <nav className="sidebar-nav">
             <div className="nav-section-label">Views</div>
             {[{id:"hub",icon:"🏠",label:"Hub"},{id:"events",icon:"☰",label:"Events"},{id:"tasks",icon:"☑",label:"Tasks"},{id:"checklist",icon:"📋",label:"Checklist"},{id:"prep",icon:"⚡",label:"Prep"}].map(n=>(

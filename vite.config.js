@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg'],
       manifest: {
-        name: 'CalConvert',
-        short_name: 'CalConvert',
+        name: "Gabe's Event Planning",
+        short_name: 'GEP',
         description: 'Track, prepare, and manage your organization events',
         theme_color: '#F0F4FF',
         background_color: '#F0F4FF',
