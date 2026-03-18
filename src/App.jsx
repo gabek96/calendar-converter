@@ -199,7 +199,7 @@ const STYLES = `
   .empty-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: ${T.text}; margin-bottom: 8px; }
   .empty-sub { color: ${T.muted}; font-size: 13px; margin-bottom: 24px; }
 
-  .toast-wrap { position: fixed; bottom: 24px; right: 24px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+  .toast-wrap { position: fixed; bottom: 80px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
   .toast { background: ${T.card}; border: 1px solid ${T.border}; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: ${T.text}; display: flex; align-items: center; gap: 8px; animation: slideUp 0.2s ease; box-shadow: 0 8px 32px rgba(0,0,0,0.4); min-width: 220px; }
   .toast.success { border-color: rgba(16,185,129,0.4); }
   .toast.error { border-color: rgba(239,68,68,0.4); }
@@ -273,12 +273,58 @@ const STYLES = `
   .event-card-footer-item span { font-size: 12px; }
   .event-card-actions { margin-left: auto; display: flex; gap: 6px; }
 
+  /* ── Mobile bottom navigation ─────────────────────────────── */
+  .mobile-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+    background: ${T.surface}; border-top: 1px solid ${T.border};
+    padding: 4px 0 env(safe-area-inset-bottom, 4px);
+  }
+  .mobile-nav-inner { display: flex; justify-content: space-around; align-items: center; }
+  .mobile-nav-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 8px; border: none; background: transparent;
+    color: ${T.muted}; font-size: 10px; font-family: 'Instrument Sans', sans-serif;
+    font-weight: 600; cursor: pointer; transition: color 0.15s; position: relative;
+  }
+  .mobile-nav-btn .mobile-nav-icon { font-size: 20px; line-height: 1; }
+  .mobile-nav-btn.active { color: ${T.accent}; }
+  .mobile-nav-badge { position: absolute; top: 2px; right: 2px; background: ${T.accent}; color: #fff; font-size: 9px; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; }
+
   @media (max-width: 768px) {
     .sidebar { display: none; }
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .mobile-nav { display: block; }
+    .topbar { padding: 0 12px; gap: 8px; }
+    .topbar-title { font-size: 14px; }
+    .search-input { width: 120px; font-size: 12px; padding: 6px 10px 6px 28px; }
+    .search-icon { font-size: 12px; left: 8px; }
+    .topbar .hide-mobile { display: none; }
+    .content { padding: 16px; padding-bottom: 80px; min-height: calc(100vh - 56px); }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-card { padding: 12px 14px; }
+    .stat-value { font-size: 22px; }
     .form-grid { grid-template-columns: 1fr; }
     .form-field.full { grid-column: 1; }
     .events-card-grid { grid-template-columns: 1fr; }
+    .cal-wrap { height: 500px; }
+    .cal-month { font-size: 15px; min-width: 140px; }
+    .filter-bar { gap: 6px; }
+    .view-toggle { flex-shrink: 0; }
+    .view-toggle-btn { padding: 5px 8px; font-size: 11px; }
+    .modal-backdrop { padding: 8px; align-items: flex-end; }
+    .modal { border-radius: 16px 16px 0 0; max-height: 92vh; max-width: 100%; }
+    .modal-body { padding: 16px; }
+    .modal-footer { padding: 12px 16px; flex-wrap: wrap; }
+    .hub-grid { gap: 12px; }
+    .event-table th, .event-table td { padding: 8px 10px; font-size: 12px; }
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-label { font-size: 9px; }
+    .topbar-title { display: none; }
+    .search-input { width: 100%; flex: 1; }
+    .btn-sm { padding: 5px 8px; font-size: 11px; }
   }
 `;
 
@@ -1446,8 +1492,8 @@ export default function CalendarConverter() {
             <div className="topbar-title">{view==="hub"?"Dashboard":view==="events"?"Events":view==="tasks"?"Tasks":view==="checklist"?"Checklist":"Preparation"}</div>
             <div className="search-wrap"><span className="search-icon">🔍</span><input className="search-input" placeholder="Search events..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
             {installPrompt&&<button className="btn btn-primary btn-sm" onClick={installApp} title="Install as app">⬇ Install App</button>}
-            <button className="btn btn-ghost btn-sm" onClick={()=>setShowImport(true)}>⬆ Import</button>
-            <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:"create"})}>＋ New Event</button>
+            <button className="btn btn-ghost btn-sm hide-mobile" onClick={()=>setShowImport(true)}>⬆ Import</button>
+            <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:"create"})}>＋<span className="hide-mobile"> New Event</span></button>
           </div>
 
           <div className="content">
@@ -1531,6 +1577,22 @@ export default function CalendarConverter() {
             {view==="prep"&&<PrepView events={events} onEventClick={ev=>setModal({type:"view",event:ev})}/>}
           </div>
         </div>
+
+        {/* Mobile bottom tab bar — replaces sidebar on small screens */}
+        <nav className="mobile-nav">
+          <div className="mobile-nav-inner">
+            {[{id:"hub",icon:"🏠",label:"Hub"},{id:"events",icon:"☰",label:"Events"},{id:"tasks",icon:"☑",label:"Tasks"},{id:"checklist",icon:"📋",label:"List"},{id:"prep",icon:"⚡",label:"Prep"}].map(n=>{
+              const badge = n.id==="events"?events.length:n.id==="tasks"?events.flatMap(e=>e.tasks||[]).filter(t=>!t.done).length:0;
+              return (
+                <button key={n.id} className={`mobile-nav-btn${view===n.id?" active":""}`} onClick={()=>setView(n.id)}>
+                  <span className="mobile-nav-icon">{n.icon}</span>
+                  {n.label}
+                  {badge>0&&<span className="mobile-nav-badge">{badge}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
       </div>
 
       {modal&&(modal.type==="create"||modal.type==="edit")&&(
