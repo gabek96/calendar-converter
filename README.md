@@ -1,4 +1,4 @@
-# 📅 Calendar Converter
+# 📅 GEP (Gabe's Event Planner)
 
 A React app that converts Excel (.xlsx) and CSV spreadsheets into calendar files (.ics) that can be imported or subscribed to in Google Calendar, Apple Calendar, and Outlook.
 
