@@ -99,7 +99,8 @@ const STYLES = `
   .card-header { padding: 16px 20px; border-bottom: 1px solid ${T.border}; display: flex; align-items: center; justify-content: space-between; }
   .card-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px; color: ${T.white}; }
 
-  .event-table { width: 100%; border-collapse: collapse; }
+  .event-table-wrap { width: 100%; overflow-x: auto; }
+  .event-table { width: 100%; border-collapse: collapse; min-width: 700px; }
   .event-table th { text-align: left; padding: 10px 16px; font-size: 11px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: ${T.muted}; border-bottom: 1px solid ${T.border}; font-family: 'JetBrains Mono', monospace; }
   .event-table td { padding: 12px 16px; border-bottom: 1px solid ${T.border}; font-size: 13.5px; vertical-align: middle; }
   .event-table tr:last-child td { border-bottom: none; }
@@ -362,6 +363,12 @@ const STYLES = `
     .modal-footer { padding: 12px 16px; flex-wrap: wrap; }
     .hub-grid { gap: 12px; }
     .event-table th, .event-table td { padding: 8px 10px; font-size: 12px; }
+    @media (max-width: 768px) {
+      .hide-mobile-col { display: none; }
+      .event-table th, .event-table td { font-size: 11px; padding: 6px 6px; }
+      .event-title-cell { font-size: 12px; }
+      .event-loc-cell { max-width: 80px; }
+    }
   }
 
   @media (max-width: 480px) {
@@ -1570,25 +1577,40 @@ export default function CalendarConverter() {
                   {filtered.length===0?(
                     <div className="empty-state"><div className="empty-icon"><FA icon={faEnvelopeOpenText} style={{fontSize:48}}/></div><div className="empty-title">{events.length===0?"No events yet":"No results"}</div><div className="empty-sub">{events.length===0?"Create your first event or import a spreadsheet.":"Try adjusting your search or filters."}</div>{events.length===0&&<button className="btn btn-primary" onClick={()=>setModal({type:"create"})}><FA icon={faPlus}/> Create Event</button>}</div>
                   ):(
-                    <table className="event-table">
-                      <thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Location</th><th>Category</th><th>Status</th><th>Semester</th><th>Food</th><th>Prep</th><th></th></tr></thead>
-                      <tbody>
-                        {filtered.map(ev=>(
-                          <tr key={ev.id} onClick={()=>setModal({type:"view",event:ev})}>
-                            <td className="event-title-cell">{ev.title}</td>
-                            <td className="event-date-cell">{fmtDate(ev.date)}</td>
-                            <td className="event-date-cell">{ev.startTime?fmt12h(ev.startTime):"—"}{ev.endTime&&` – ${fmt12h(ev.endTime)}`}</td>
-                            <td className="event-loc-cell">{ev.location||"—"}</td>
-                            <td>{ev.category?<span className="tag" style={{background:`${CAT_COLORS[ev.category]||T.subtle}22`,color:CAT_COLORS[ev.category]||T.subtle}}>{ev.category}</span>:"—"}</td>
-                            <td><span className="tag" style={{background:`${STATUS_COLORS[ev.status||"Planning"]||T.accent}22`,color:STATUS_COLORS[ev.status||"Planning"]||T.accent}}>{ev.status||"Planning"}</span></td>
-                            <td className="event-date-cell">{ev.semester||"—"}</td>
-                            <td>{ev.food?<span className="tag" style={{background:`${({Yes:"#10B981",No:"#EF4444",TBD:"#F59E0B"})[ev.food]||"#8A99AA"}22`,color:({Yes:"#10B981",No:"#EF4444",TBD:"#F59E0B"})[ev.food]||"#8A99AA"}}>{ev.food}</span>:"—"}</td>
-                            <td className="event-date-cell" style={{whiteSpace:"nowrap"}}>{(ev.tasks||[]).length>0&&<span style={{marginRight:6}}>{(ev.tasks||[]).filter(t=>t.done).length}/{(ev.tasks||[]).length} <FA icon={faCheck} style={{fontSize:10}}/></span>}{(ev.volunteers||[]).length>0&&<span>{(ev.volunteers||[]).length} <FA icon={faUser} style={{fontSize:10}}/></span>}{!(ev.tasks||[]).length&&!(ev.volunteers||[]).length&&"—"}</td>
-                            <td><div className="actions-cell" onClick={e=>e.stopPropagation()}><button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:"edit",event:ev})}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>setShowDeleteConfirm(ev.id)}>Delete</button></div></td>
+                    <div className="event-table-wrap">
+                      <table className="event-table">
+                        <thead>
+                          <tr>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Location</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th className="hide-mobile-col">Semester</th>
+                            <th className="hide-mobile-col">Food</th>
+                            <th className="hide-mobile-col">Prep</th>
+                            <th className="hide-mobile-col"></th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {filtered.map(ev=>(
+                            <tr key={ev.id} onClick={()=>setModal({type:"view",event:ev})}>
+                              <td className="event-title-cell">{ev.title}</td>
+                              <td className="event-date-cell">{fmtDate(ev.date)}</td>
+                              <td className="event-date-cell">{ev.startTime?fmt12h(ev.startTime):"—"}{ev.endTime&&` – ${fmt12h(ev.endTime)}`}</td>
+                              <td className="event-loc-cell">{ev.location||"—"}</td>
+                              <td>{ev.category?<span className="tag" style={{background:`${CAT_COLORS[ev.category]||T.subtle}22`,color:CAT_COLORS[ev.category]||T.subtle}}>{ev.category}</span>:"—"}</td>
+                              <td><span className="tag" style={{background:`${STATUS_COLORS[ev.status||"Planning"]||T.accent}22`,color:STATUS_COLORS[ev.status||"Planning"]||T.accent}}>{ev.status||"Planning"}</span></td>
+                              <td className="event-date-cell hide-mobile-col">{ev.semester||"—"}</td>
+                              <td className="hide-mobile-col">{ev.food?<span className="tag" style={{background:`${({Yes:"#10B981",No:"#EF4444",TBD:"#F59E0B"})[ev.food]||"#8A99AA"}22`,color:({Yes:"#10B981",No:"#EF4444",TBD:"#F59E0B"})[ev.food]||"#8A99AA"}}>{ev.food}</span>:"—"}</td>
+                              <td className="event-date-cell hide-mobile-col" style={{whiteSpace:"nowrap"}}>{(ev.tasks||[]).length>0&&<span style={{marginRight:6}}>{(ev.tasks||[]).filter(t=>t.done).length}/{(ev.tasks||[]).length} <FA icon={faCheck} style={{fontSize:10}}/></span>}{(ev.volunteers||[]).length>0&&<span>{(ev.volunteers||[]).length} <FA icon={faUser} style={{fontSize:10}}/></span>}{!(ev.tasks||[]).length&&!(ev.volunteers||[]).length&&"—"}</td>
+                              <td className="hide-mobile-col"><div className="actions-cell" onClick={e=>e.stopPropagation()}><button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:"edit",event:ev})}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>setShowDeleteConfirm(ev.id)}>Delete</button></div></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </div>}
 
