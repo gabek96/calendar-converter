@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import * as XLSX from "xlsx";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faHouse } from "@fortawesome/free-regular-svg-icons";
+import {
+  faBars, faSquareCheck, faClipboardList, faBolt, faUpload, faDownload, faPlus,
+  faMagnifyingGlass, faWrench, faXmark, faCheck, faHandPeace,
+  faCalendarDay, faChampagneGlasses, faCalendar, faEnvelopeOpenText,
+  faNoteSticky, faCircleCheck, faUtensils, faUser, faLocationDot, faCalendarDays,
+  faFolderOpen, faTriangleExclamation, faChevronLeft, faChevronRight, faList, faTableCellsLarge
+} from "@fortawesome/free-solid-svg-icons";
+
+// Shorthand helper to reduce JSX verbosity
+const FA = ({ icon, ...props }) => <FontAwesomeIcon icon={icon} {...props} />;
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 const T = {
@@ -71,7 +83,7 @@ const STYLES = `
   .search-input:focus { border-color: ${T.accent}; }
   .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: ${T.muted}; font-size: 14px; pointer-events: none; }
 
-  .content { flex: 1; padding: 24px; display: flex; flex-direction: column; min-height: calc(100vh - 56px); }
+  .content { flex: 1; padding: 24px; display: flex; flex-direction: column; overflow-y: auto; }
 
   .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: 'Instrument Sans', sans-serif; cursor: pointer; transition: all 0.15s; border: none; white-space: nowrap; }
   .btn-primary { background: ${T.accent}; color: #fff; }
@@ -291,15 +303,48 @@ const STYLES = `
   .mobile-nav-btn.active { color: ${T.accent}; }
   .mobile-nav-badge { position: absolute; top: 2px; right: 2px; background: ${T.accent}; color: #fff; font-size: 9px; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; }
 
+  .mobile-tools-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 49;
+    background: rgba(0,0,0,0.3); backdrop-filter: blur(2px);
+  }
+  .mobile-tools-overlay.open { display: block; }
+  .mobile-tools-menu {
+    display: none;
+    position: fixed; bottom: 60px; left: 12px; right: 12px; z-index: 51;
+    background: ${T.card}; border: 1px solid ${T.border};
+    border-radius: 14px; padding: 8px;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+    animation: slideUp 0.18s ease;
+  }
+  .mobile-tools-menu.open { display: block; }
+  .mobile-tools-btn {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 14px 16px; border: none; background: transparent;
+    color: ${T.text}; font-size: 15px; font-family: 'Instrument Sans', sans-serif;
+    font-weight: 500; border-radius: 10px; cursor: pointer; transition: background 0.12s;
+    text-align: left;
+  }
+  .mobile-tools-btn:hover, .mobile-tools-btn:active { background: ${T.accentDim}; }
+  .mobile-tools-btn .mt-icon { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
+  .mobile-tools-btn .mt-label { flex: 1; }
+  .mobile-tools-btn .mt-sub { font-size: 11px; color: ${T.muted}; font-family: 'JetBrains Mono', monospace; }
+  .mobile-tools-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .mobile-tools-divider { height: 1px; background: ${T.border}; margin: 4px 8px; }
+
   @media (max-width: 768px) {
+    .mobile-tools-overlay.open { display: block; }
+    .mobile-tools-menu.open { display: block; }
     .sidebar { display: none; }
     .mobile-nav { display: block; }
-    .topbar { padding: 0 12px; gap: 8px; }
+    .app { flex-direction: column; }
+    .main { flex: 1; min-height: 0; }
+    .topbar { width: 100%; padding: 0 12px; gap: 8px; position: sticky; top: 0; z-index: 10; }
     .topbar-title { font-size: 14px; }
     .search-input { width: 120px; font-size: 12px; padding: 6px 10px 6px 28px; }
     .search-icon { font-size: 12px; left: 8px; }
     .topbar .hide-mobile { display: none; }
-    .content { padding: 16px; padding-bottom: 80px; min-height: calc(100vh - 56px); }
+    .content { padding: 16px; padding-bottom: 80px; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     .stat-card { padding: 12px 14px; }
     .stat-value { font-size: 22px; }
@@ -598,11 +643,11 @@ function ImportModal({ onImport, onClose }) {
         <div className="modal-body">
           <div className={`drop-zone${drag?" drag-over":""}`} onDragOver={e=>{e.preventDefault();setDrag(true);}} onDragLeave={()=>setDrag(false)} onDrop={e=>{e.preventDefault();setDrag(false);const f=e.dataTransfer.files[0];if(f)process(f);}} onClick={()=>fileRef.current.click()}>
             <input ref={fileRef} type="file" accept=".xlsx,.csv,.xls" className="drop-input" onChange={e=>{const f=e.target.files[0];if(f)process(f);}} onClick={e=>e.stopPropagation()} />
-            <div style={{fontSize:32,marginBottom:10}}>📂</div>
+            <div style={{fontSize:32,marginBottom:10}}><FA icon={faFolderOpen}/></div>
             <div style={{fontWeight:600,color:T.text,marginBottom:4}}>{fileName||"Drop your spreadsheet here"}</div>
             <div style={{fontSize:12,color:T.muted}}>{rows.length?`${rows.length} rows loaded`:"Accepts .xlsx, .xls, .csv"}</div>
           </div>
-          {err && <div style={{color:T.red,fontSize:12,marginTop:10}}>⚠ {err}</div>}
+          {err && <div style={{color:T.red,fontSize:12,marginTop:10}}><FA icon={faTriangleExclamation}/> {err}</div>}
           {headers.length > 0 && (
             <>
               <div style={{margin:"16px 0 8px",fontSize:11,letterSpacing:1,textTransform:"uppercase",color:T.muted,fontFamily:"'JetBrains Mono',monospace"}}>Map Columns</div>
@@ -661,9 +706,9 @@ function CalendarView({ events, onEventClick, onDayClick }) {
       <div className="cal-nav-bar">
         <div className="cal-month">{MONTHS[cur.month]} {cur.year}</div>
         <div className="cal-nav">
-          <button className="btn btn-ghost btn-sm" onClick={()=>setCur(c=>{ const d=new Date(c.year,c.month-1); return {year:d.getFullYear(),month:d.getMonth()}; })}>← Prev</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setCur(c=>{ const d=new Date(c.year,c.month-1); return {year:d.getFullYear(),month:d.getMonth()}; })}><FA icon={faChevronLeft}/> Prev</button>
           <button className="btn btn-ghost btn-sm" onClick={()=>setCur({year:today.getFullYear(),month:today.getMonth()})}>Today</button>
-          <button className="btn btn-ghost btn-sm" onClick={()=>setCur(c=>{ const d=new Date(c.year,c.month+1); return {year:d.getFullYear(),month:d.getMonth()}; })}>Next →</button>
+          <button className="btn btn-ghost btn-sm" onClick={()=>setCur(c=>{ const d=new Date(c.year,c.month+1); return {year:d.getFullYear(),month:d.getMonth()}; })}>Next <FA icon={faChevronRight}/></button>
         </div>
       </div>
       <div className="cal-day-labels">
@@ -750,9 +795,9 @@ function WeekView({ events, onEventClick, onDayClick }) {
       <div className="cal-nav-bar">
         <div className="cal-month">{startLbl} – {endLbl}</div>
         <div className="cal-nav">
-          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() - 7); setCurDate(d); }}>← Prev</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() - 7); setCurDate(d); }}><FA icon={faChevronLeft}/> Prev</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setCurDate(new Date())}>Today</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() + 7); setCurDate(d); }}>Next →</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() + 7); setCurDate(d); }}>Next <FA icon={faChevronRight}/></button>
         </div>
       </div>
 
@@ -862,9 +907,9 @@ function DayView({ events, onEventClick, onDayClick }) {
       <div className="cal-nav-bar">
         <div className="cal-month" style={{ fontSize: 16 }}>{dayLabel}</div>
         <div className="cal-nav">
-          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() - 1); setCurDate(d); }}>← Prev</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() - 1); setCurDate(d); }}><FA icon={faChevronLeft}/> Prev</button>
           <button className="btn btn-ghost btn-sm" onClick={() => setCurDate(new Date())}>Today</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() + 1); setCurDate(d); }}>Next →</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => { const d = new Date(curDate); d.setDate(d.getDate() + 1); setCurDate(d); }}>Next <FA icon={faChevronRight}/></button>
         </div>
       </div>
 
@@ -1116,7 +1161,7 @@ function TasksView({ events, onUpdateField }) {
       {/* Task list */}
       {filtered.length===0?(
         <div className="empty-state">
-          <div className="empty-icon">{filter==="done"?"🎉":"📝"}</div>
+          <div className="empty-icon">{filter==="done"?<FA icon={faChampagneGlasses} style={{fontSize:48}}/>:<FA icon={faNoteSticky} style={{fontSize:48}}/>}</div>
           <div className="empty-title">{filter==="done"?"No completed tasks":filter==="pending"?"All caught up!":"No tasks yet"}</div>
           <div className="empty-sub">{filter==="all"?"Add a task above and assign it to an event.":""}</div>
         </div>
@@ -1280,7 +1325,7 @@ function HubView({ events, onEventClick, onNewEvent, onUpdateField }) {
   const greeting = hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
   return (
     <div style={{display:"flex",flexDirection:"column",flex:1}}>
-      <div style={{marginBottom:24}}><div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:26,color:T.white,marginBottom:4}}>{greeting} 👋</div><div style={{color:T.subtle,fontSize:14}}>Here's your event overview for today.</div></div>
+      <div style={{marginBottom:24}}><div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:26,color:T.white,marginBottom:4}}>{greeting} <FA icon={faHandPeace}/></div><div style={{color:T.subtle,fontSize:14}}>Here's your event overview for today.</div></div>
       <div className="stats-grid">
         <div className="stat-card"><div className="stat-label">Total Events</div><div className="stat-value">{events.length}</div></div>
         <div className="stat-card"><div className="stat-label">Upcoming</div><div className="stat-value" style={{color:T.accent}}>{upcomingCount}</div></div>
@@ -1289,13 +1334,13 @@ function HubView({ events, onEventClick, onNewEvent, onUpdateField }) {
       </div>
       <div className="hub-grid">
         <div className="card" style={{padding:"16px 20px",display:"flex",flexDirection:"column"}}>
-          <div className="hub-panel-title"><span>📅</span> Coming Up This Week<span style={{marginLeft:"auto",fontSize:11,color:T.muted,fontFamily:"'JetBrains Mono',monospace",fontWeight:400}}>{thisWeek.length} event{thisWeek.length!==1?"s":""}</span></div>
+          <div className="hub-panel-title"><span><FA icon={faCalendarDay}/></span> Coming Up This Week<span style={{marginLeft:"auto",fontSize:11,color:T.muted,fontFamily:"'JetBrains Mono',monospace",fontWeight:400}}>{thisWeek.length} event{thisWeek.length!==1?"s":""}</span></div>
           {thisWeek.length===0?<div style={{color:T.muted,fontSize:13,textAlign:"center",padding:"20px 0"}}>No events this week</div>:thisWeek.map(ev=>{const{label:dayLbl,color:dayColor}=daysLabel(ev.date);return(<div key={ev.id} className="hub-event-row" onClick={()=>onEventClick(ev)}><div style={{flex:1}}><div className="hub-event-title">{ev.title}</div><div className="hub-event-meta">{fmtDate(ev.date)}{ev.startTime?" · "+fmt12h(ev.startTime):""}</div></div><span className="days-chip" style={{background:dayColor+"22",color:dayColor}}>{dayLbl}</span></div>);})}
         </div>
         <div className="card" style={{padding:"16px 20px",display:"flex",flexDirection:"column"}}>
-          <div className="hub-panel-title"><span>✓</span> Open Tasks<span style={{marginLeft:"auto",fontSize:11,color:T.muted,fontFamily:"'JetBrains Mono',monospace",fontWeight:400}}>{openTasks.length} remaining</span></div>
+          <div className="hub-panel-title"><span><FA icon={faCheck}/></span> Open Tasks<span style={{marginLeft:"auto",fontSize:11,color:T.muted,fontFamily:"'JetBrains Mono',monospace",fontWeight:400}}>{openTasks.length} remaining</span></div>
           {openTasks.length===0
-            ? <div style={{color:T.green,fontSize:13,textAlign:"center",padding:"20px 0"}}>🎉 All tasks complete!</div>
+            ? <div style={{color:T.green,fontSize:13,textAlign:"center",padding:"20px 0"}}><FA icon={faChampagneGlasses}/> All tasks complete!</div>
             : openTasks.slice(0,12).map(t => {
                 const isEd = hubEditId?.taskId===t.id && hubEditId?.eventId===t.eventId;
                 return (
@@ -1325,10 +1370,10 @@ function HubView({ events, onEventClick, onNewEvent, onUpdateField }) {
                 );
               })
           }
-          {openTasks.length>12&&<div style={{fontSize:12,color:T.muted,marginTop:10,textAlign:"center"}}>+{openTasks.length-12} more — open ☑ Tasks to see all</div>}
+          {openTasks.length>12&&<div style={{fontSize:12,color:T.muted,marginTop:10,textAlign:"center"}}>+{openTasks.length-12} more — open <FA icon={faSquareCheck}/> Tasks to see all</div>}
         </div>
       </div>
-      {events.length===0&&<div className="empty-state" style={{marginTop:24}}><div className="empty-icon">🗓</div><div className="empty-title">No events yet</div><div className="empty-sub">Create your first event or import a spreadsheet to get started.</div><button className="btn btn-primary" onClick={onNewEvent}>＋ Create Event</button></div>}
+      {events.length===0&&<div className="empty-state" style={{marginTop:24}}><div className="empty-icon"><FA icon={faCalendar} style={{fontSize:48}}/></div><div className="empty-title">No events yet</div><div className="empty-sub">Create your first event or import a spreadsheet to get started.</div><button className="btn btn-primary" onClick={onNewEvent}><FA icon={faPlus}/> Create Event</button></div>}
     </div>
   );
 }
@@ -1343,7 +1388,7 @@ function PrepView({ events, onEventClick }) {
   return (
     <div>
       <div style={{marginBottom:20,display:"flex",alignItems:"center",gap:12}}><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:18,color:T.white}}>Events This Week</div><span style={{fontSize:12,color:T.muted,fontFamily:"'JetBrains Mono',monospace"}}>{upcoming.length} event{upcoming.length!==1?"s":""}</span></div>
-      {upcoming.length===0?<div className="empty-state"><div className="empty-icon">✅</div><div className="empty-title">All clear this week</div><div className="empty-sub">No events in the next 7 days.</div></div>:upcoming.map(ev=>{const tasks=ev.tasks||[];const volunteers=ev.volunteers||[];const doneCnt=tasks.filter(t=>t.done).length;const{label:dayLbl,color:dayColor}=daysLabel(ev.date);return(<div key={ev.id} className="prep-card" onClick={()=>onEventClick(ev)}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:15,color:T.white,flex:1}}>{ev.title}</div><span className="days-chip" style={{background:`${dayColor}22`,color:dayColor}}>{dayLbl}</span></div><div style={{fontSize:12,color:T.subtle,fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(ev.date)}{ev.startTime?" · "+fmt12h(ev.startTime):""}{ev.location?" · "+ev.location:""}</div><div className="prep-pills"><span className="prep-pill" style={{color:FOOD_C[ev.food]||T.muted,borderColor:ev.food?`${FOOD_C[ev.food]}44`:T.border}}>🍽 {ev.food?`Food: ${ev.food}`:"Food: Not set"}</span><span className="prep-pill">✓ Tasks: {tasks.length===0?"None":`${doneCnt}/${tasks.length}`}</span><span className="prep-pill">👤 {volunteers.length===0?"No volunteers":`${volunteers.length} volunteer${volunteers.length!==1?"s":""}`}</span></div>{tasks.length>0&&<div className="progress-bar-wrap" style={{marginTop:10}}><div className="progress-bar-fill" style={{width:`${(doneCnt/tasks.length)*100}%`}}/></div>}</div>);})}
+      {upcoming.length===0?<div className="empty-state"><div className="empty-icon"><FA icon={faCircleCheck} style={{fontSize:48}}/></div><div className="empty-title">All clear this week</div><div className="empty-sub">No events in the next 7 days.</div></div>:upcoming.map(ev=>{const tasks=ev.tasks||[];const volunteers=ev.volunteers||[];const doneCnt=tasks.filter(t=>t.done).length;const{label:dayLbl,color:dayColor}=daysLabel(ev.date);return(<div key={ev.id} className="prep-card" onClick={()=>onEventClick(ev)}><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}><div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:15,color:T.white,flex:1}}>{ev.title}</div><span className="days-chip" style={{background:`${dayColor}22`,color:dayColor}}>{dayLbl}</span></div><div style={{fontSize:12,color:T.subtle,fontFamily:"'JetBrains Mono',monospace"}}>{fmtDate(ev.date)}{ev.startTime?" · "+fmt12h(ev.startTime):""}{ev.location?" · "+ev.location:""}</div><div className="prep-pills"><span className="prep-pill" style={{color:FOOD_C[ev.food]||T.muted,borderColor:ev.food?`${FOOD_C[ev.food]}44`:T.border}}><FA icon={faUtensils}/> {ev.food?`Food: ${ev.food}`:"Food: Not set"}</span><span className="prep-pill"><FA icon={faCheck}/> Tasks: {tasks.length===0?"None":`${doneCnt}/${tasks.length}`}</span><span className="prep-pill"><FA icon={faUser}/> {volunteers.length===0?"No volunteers":`${volunteers.length} volunteer${volunteers.length!==1?"s":""}`}</span></div>{tasks.length>0&&<div className="progress-bar-wrap" style={{marginTop:10}}><div className="progress-bar-fill" style={{width:`${(doneCnt/tasks.length)*100}%`}}/></div>}</div>);})}
     </div>
   );
 }
@@ -1353,7 +1398,7 @@ function CardView({ events, onEventClick, onEdit, onDelete }) {
   const FOOD_C = { Yes: T.green, No: T.red, TBD: T.gold };
   if (events.length === 0) return (
     <div className="empty-state">
-      <div className="empty-icon">📭</div>
+      <div className="empty-icon"><FA icon={faEnvelopeOpenText} style={{fontSize:48}}/></div>
       <div className="empty-title">No events</div>
       <div className="empty-sub">Try adjusting your search or filters.</div>
     </div>
@@ -1373,14 +1418,14 @@ function CardView({ events, onEventClick, onEdit, onDelete }) {
               <div className="event-card-meta">
                 {ev.date && (
                   <div className="event-card-meta-row">
-                    <i className="event-card-meta-icon">📅</i>
+                    <i className="event-card-meta-icon"><FA icon={faCalendarDay} style={{fontSize:12}}/></i>
                     {fmtDate(ev.date)}
                     {ev.startTime && <span style={{ marginLeft: 4 }}>· {fmt12h(ev.startTime)}{ev.endTime ? ` – ${fmt12h(ev.endTime)}` : ""}</span>}
                   </div>
                 )}
                 {ev.location && (
                   <div className="event-card-meta-row">
-                    <i className="event-card-meta-icon">📍</i>
+                    <i className="event-card-meta-icon"><FA icon={faLocationDot} style={{fontSize:12}}/></i>
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.location}</span>
                   </div>
                 )}
@@ -1388,19 +1433,19 @@ function CardView({ events, onEventClick, onEdit, onDelete }) {
               <div className="event-card-badges">
                 {ev.category && <span className="tag" style={{ background: `${accentColor}22`, color: accentColor }}>{ev.category}</span>}
                 <span className="tag" style={{ background: `${STATUS_COLORS[ev.status || "Planning"] || T.accent}22`, color: STATUS_COLORS[ev.status || "Planning"] || T.accent }}>{ev.status || "Planning"}</span>
-                {ev.food && <span className="tag" style={{ background: `${FOOD_C[ev.food] || T.muted}22`, color: FOOD_C[ev.food] || T.muted }}>🍽 {ev.food}</span>}
+                {ev.food && <span className="tag" style={{ background: `${FOOD_C[ev.food] || T.muted}22`, color: FOOD_C[ev.food] || T.muted }}><FA icon={faUtensils}/> {ev.food}</span>}
               </div>
               {ev.description && <div className="event-card-desc">{ev.description}</div>}
             </div>
             <div className="event-card-footer">
               {tasks.length > 0 && (
-                <div className="event-card-footer-item"><span>✓</span>{doneCnt}/{tasks.length}</div>
+                <div className="event-card-footer-item"><span><FA icon={faCheck} style={{fontSize:11}}/></span>{doneCnt}/{tasks.length}</div>
               )}
               {volunteers.length > 0 && (
-                <div className="event-card-footer-item"><span>👤</span>{volunteers.length}</div>
+                <div className="event-card-footer-item"><span><FA icon={faUser} style={{fontSize:11}}/></span>{volunteers.length}</div>
               )}
               {ev.semester && (
-                <div className="event-card-footer-item"><span>📆</span>{ev.semester}</div>
+                <div className="event-card-footer-item"><span><FA icon={faCalendarDays} style={{fontSize:11}}/></span>{ev.semester}</div>
               )}
               <div className="event-card-actions" onClick={e => e.stopPropagation()}>
                 <button className="btn btn-ghost btn-sm" onClick={() => onEdit(ev)}>Edit</button>
@@ -1428,6 +1473,7 @@ export default function CalendarConverter() {
   const [showPast, setShowPast] = useState(false);
   const [checklist, setChecklist] = useState(loadChecklist);
   const [installPrompt, setInstallPrompt] = useState(null);
+  const [showMobileTools, setShowMobileTools] = useState(false);
   const { toasts, show: toast } = useToast();
 
   useEffect(() => { saveEvents(events); }, [events]);
@@ -1471,7 +1517,7 @@ export default function CalendarConverter() {
           <div className="sidebar-logo"><div className="logo-mark"><div className="logo-dot"/><span>GEP</span></div><div className="logo-sub">Gabe's Event Planning</div></div>
           <nav className="sidebar-nav">
             <div className="nav-section-label">Views</div>
-            {[{id:"hub",icon:"🏠",label:"Hub"},{id:"events",icon:"☰",label:"Events"},{id:"tasks",icon:"☑",label:"Tasks"},{id:"checklist",icon:"📋",label:"Checklist"},{id:"prep",icon:"⚡",label:"Prep"}].map(n=>(
+            {[{id:"hub",icon:<FA icon={faHouse}/>,label:"Hub"},{id:"events",icon:<FA icon={faBars}/>,label:"Events"},{id:"tasks",icon:<FA icon={faSquareCheck}/>,label:"Tasks"},{id:"checklist",icon:<FA icon={faClipboardList}/>,label:"Checklist"},{id:"prep",icon:<FA icon={faBolt}/>,label:"Prep"}].map(n=>(
               <button key={n.id} className={`nav-btn${view===n.id?" active":""}`} onClick={()=>setView(n.id)}>
                 <span className="icon">{n.icon}</span>{n.label}
                 {n.id==="events"&&<span className="nav-badge">{events.length}</span>}
@@ -1480,9 +1526,9 @@ export default function CalendarConverter() {
               </button>
             ))}
             <div className="nav-section-label">Tools</div>
-            <button className="nav-btn" onClick={()=>setShowImport(true)}><span className="icon">⬆</span>Import</button>
-            <button className="nav-btn" onClick={exportICS} disabled={!filtered.length}><span className="icon">⬇</span>Export .ics</button>
-            <button className="nav-btn" onClick={()=>setModal({type:"create"})}><span className="icon">＋</span>New Event</button>
+            <button className="nav-btn" onClick={()=>setShowImport(true)}><span className="icon"><FA icon={faUpload}/></span>Import</button>
+            <button className="nav-btn" onClick={exportICS} disabled={!filtered.length}><span className="icon"><FA icon={faDownload}/></span>Export .ics</button>
+            <button className="nav-btn" onClick={()=>setModal({type:"create"})}><span className="icon"><FA icon={faPlus}/></span>New Event</button>
           </nav>
           <div className="sidebar-footer"><div style={{fontSize:11,color:T.muted,fontFamily:"'JetBrains Mono',monospace"}}>{events.length} total events</div></div>
         </aside>
@@ -1490,10 +1536,10 @@ export default function CalendarConverter() {
         <div className="main">
           <div className="topbar">
             <div className="topbar-title">{view==="hub"?"Dashboard":view==="events"?"Events":view==="tasks"?"Tasks":view==="checklist"?"Checklist":"Preparation"}</div>
-            <div className="search-wrap"><span className="search-icon">🔍</span><input className="search-input" placeholder="Search events..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
-            {installPrompt&&<button className="btn btn-primary btn-sm" onClick={installApp} title="Install as app">⬇ Install App</button>}
-            <button className="btn btn-ghost btn-sm hide-mobile" onClick={()=>setShowImport(true)}>⬆ Import</button>
-            <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:"create"})}>＋<span className="hide-mobile"> New Event</span></button>
+            <div className="search-wrap"><span className="search-icon"><FA icon={faMagnifyingGlass}/></span><input className="search-input" placeholder="Search events..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+            {installPrompt&&<button className="btn btn-primary btn-sm" onClick={installApp} title="Install as app"><FA icon={faDownload}/> Install App</button>}
+            <button className="btn btn-ghost btn-sm hide-mobile" onClick={()=>setShowImport(true)}><FA icon={faUpload}/> Import</button>
+            <button className="btn btn-primary btn-sm" onClick={()=>setModal({type:"create"})}><FA icon={faPlus}/><span className="hide-mobile"> New Event</span></button>
           </div>
 
           <div className="content">
@@ -1508,21 +1554,21 @@ export default function CalendarConverter() {
                 <div className="filter-bar">
                   {cats.map(c=><button key={c} className={`filter-chip${catFilter===c?" active":""}`} onClick={()=>setCatFilter(c)}>{c}</button>)}
                   <button className={`filter-chip${!showPast?" active":""}`} onClick={()=>setShowPast(p=>!p)}>{showPast?"All Dates":"Upcoming"}</button>
-                  {(search||catFilter!=="All"||showPast)&&<button className="filter-chip" style={{marginLeft:"auto"}} onClick={()=>{setSearch("");setCatFilter("All");setShowPast(false);}}>✕ Clear</button>}
+                  {(search||catFilter!=="All"||showPast)&&<button className="filter-chip" style={{marginLeft:"auto"}} onClick={()=>{setSearch("");setCatFilter("All");setShowPast(false);}}><FA icon={faXmark}/> Clear</button>}
                   <div className="view-toggle" style={{marginLeft:"auto"}}>
-                    <button className={`view-toggle-btn${eventsView==="list"?" active":""}`} onClick={()=>setEventsView("list")}>☰ List</button>
-                    <button className={`view-toggle-btn${eventsView==="cards"?" active":""}`} onClick={()=>setEventsView("cards")}>⊞ Cards</button>
+                    <button className={`view-toggle-btn${eventsView==="list"?" active":""}`} onClick={()=>setEventsView("list")}><FA icon={faList}/> List</button>
+                    <button className={`view-toggle-btn${eventsView==="cards"?" active":""}`} onClick={()=>setEventsView("cards")}><FA icon={faTableCellsLarge}/> Cards</button>
                     <button className={`view-toggle-btn${eventsView==="calendar"?" active":""}`} onClick={()=>setEventsView("calendar")}>Month</button>
                     <button className={`view-toggle-btn${eventsView==="week"?" active":""}`} onClick={()=>setEventsView("week")}>Week</button>
                     <button className={`view-toggle-btn${eventsView==="day"?" active":""}`} onClick={()=>setEventsView("day")}>Day</button>
                   </div>
-                  {filtered.length>0&&(eventsView==="list"||eventsView==="cards")&&<button className="btn btn-ghost btn-sm" onClick={exportICS}>⬇ Export {filtered.length}</button>}
-                  {events.length>0&&(eventsView==="list"||eventsView==="cards")&&<button className="btn btn-danger btn-sm" onClick={()=>setShowClearConfirm(true)}>✕ Clear All</button>}
+                  {filtered.length>0&&(eventsView==="list"||eventsView==="cards")&&<button className="btn btn-ghost btn-sm" onClick={exportICS}><FA icon={faDownload}/> Export {filtered.length}</button>}
+                  {events.length>0&&(eventsView==="list"||eventsView==="cards")&&<button className="btn btn-danger btn-sm" onClick={()=>setShowClearConfirm(true)}><FA icon={faXmark}/> Clear All</button>}
                 </div>
 
                 {eventsView==="list"&&<div className="card">
                   {filtered.length===0?(
-                    <div className="empty-state"><div className="empty-icon">📭</div><div className="empty-title">{events.length===0?"No events yet":"No results"}</div><div className="empty-sub">{events.length===0?"Create your first event or import a spreadsheet.":"Try adjusting your search or filters."}</div>{events.length===0&&<button className="btn btn-primary" onClick={()=>setModal({type:"create"})}>＋ Create Event</button>}</div>
+                    <div className="empty-state"><div className="empty-icon"><FA icon={faEnvelopeOpenText} style={{fontSize:48}}/></div><div className="empty-title">{events.length===0?"No events yet":"No results"}</div><div className="empty-sub">{events.length===0?"Create your first event or import a spreadsheet.":"Try adjusting your search or filters."}</div>{events.length===0&&<button className="btn btn-primary" onClick={()=>setModal({type:"create"})}><FA icon={faPlus}/> Create Event</button>}</div>
                   ):(
                     <table className="event-table">
                       <thead><tr><th>Title</th><th>Date</th><th>Time</th><th>Location</th><th>Category</th><th>Status</th><th>Semester</th><th>Food</th><th>Prep</th><th></th></tr></thead>
@@ -1537,7 +1583,7 @@ export default function CalendarConverter() {
                             <td><span className="tag" style={{background:`${STATUS_COLORS[ev.status||"Planning"]||T.accent}22`,color:STATUS_COLORS[ev.status||"Planning"]||T.accent}}>{ev.status||"Planning"}</span></td>
                             <td className="event-date-cell">{ev.semester||"—"}</td>
                             <td>{ev.food?<span className="tag" style={{background:`${({Yes:"#10B981",No:"#EF4444",TBD:"#F59E0B"})[ev.food]||"#8A99AA"}22`,color:({Yes:"#10B981",No:"#EF4444",TBD:"#F59E0B"})[ev.food]||"#8A99AA"}}>{ev.food}</span>:"—"}</td>
-                            <td className="event-date-cell" style={{whiteSpace:"nowrap"}}>{(ev.tasks||[]).length>0&&<span style={{marginRight:6}}>{(ev.tasks||[]).filter(t=>t.done).length}/{(ev.tasks||[]).length} ✓</span>}{(ev.volunteers||[]).length>0&&<span>{(ev.volunteers||[]).length} 👤</span>}{!(ev.tasks||[]).length&&!(ev.volunteers||[]).length&&"—"}</td>
+                            <td className="event-date-cell" style={{whiteSpace:"nowrap"}}>{(ev.tasks||[]).length>0&&<span style={{marginRight:6}}>{(ev.tasks||[]).filter(t=>t.done).length}/{(ev.tasks||[]).length} <FA icon={faCheck} style={{fontSize:10}}/></span>}{(ev.volunteers||[]).length>0&&<span>{(ev.volunteers||[]).length} <FA icon={faUser} style={{fontSize:10}}/></span>}{!(ev.tasks||[]).length&&!(ev.volunteers||[]).length&&"—"}</td>
                             <td><div className="actions-cell" onClick={e=>e.stopPropagation()}><button className="btn btn-ghost btn-sm" onClick={()=>setModal({type:"edit",event:ev})}>Edit</button><button className="btn btn-danger btn-sm" onClick={()=>setShowDeleteConfirm(ev.id)}>Delete</button></div></td>
                           </tr>
                         ))}
@@ -1548,7 +1594,7 @@ export default function CalendarConverter() {
 
                 {eventsView==="cards"&&(
                   filtered.length===0?(
-                    <div className="empty-state"><div className="empty-icon">📭</div><div className="empty-title">{events.length===0?"No events yet":"No results"}</div><div className="empty-sub">{events.length===0?"Create your first event or import a spreadsheet.":"Try adjusting your search or filters."}</div>{events.length===0&&<button className="btn btn-primary" onClick={()=>setModal({type:"create"})}>＋ Create Event</button>}</div>
+                    <div className="empty-state"><div className="empty-icon"><FA icon={faEnvelopeOpenText} style={{fontSize:48}}/></div><div className="empty-title">{events.length===0?"No events yet":"No results"}</div><div className="empty-sub">{events.length===0?"Create your first event or import a spreadsheet.":"Try adjusting your search or filters."}</div>{events.length===0&&<button className="btn btn-primary" onClick={()=>setModal({type:"create"})}><FA icon={faPlus}/> Create Event</button>}</div>
                   ):(
                     <CardView events={filtered} onEventClick={ev=>setModal({type:"view",event:ev})} onEdit={ev=>setModal({type:"edit",event:ev})} onDelete={id=>setShowDeleteConfirm(id)}/>
                   )
@@ -1578,19 +1624,42 @@ export default function CalendarConverter() {
           </div>
         </div>
 
+        {/* Mobile tools popup menu */}
+        <div className={`mobile-tools-overlay${showMobileTools?" open":""}`} onClick={()=>setShowMobileTools(false)}/>
+        <div className={`mobile-tools-menu${showMobileTools?" open":""}`}>
+          <button className="mobile-tools-btn" onClick={()=>{setShowMobileTools(false);setShowImport(true);}}>
+            <span className="mt-icon"><FA icon={faUpload}/></span>
+            <span className="mt-label">Import<br/><span className="mt-sub">Upload spreadsheet</span></span>
+          </button>
+          <div className="mobile-tools-divider"/>
+          <button className="mobile-tools-btn" disabled={!filtered.length} onClick={()=>{setShowMobileTools(false);exportICS();}}>
+            <span className="mt-icon"><FA icon={faDownload}/></span>
+            <span className="mt-label">Export .ics<br/><span className="mt-sub">{filtered.length} events</span></span>
+          </button>
+          <div className="mobile-tools-divider"/>
+          <button className="mobile-tools-btn" onClick={()=>{setShowMobileTools(false);setModal({type:"create"});}}>
+            <span className="mt-icon"><FA icon={faPlus}/></span>
+            <span className="mt-label">New Event<br/><span className="mt-sub">Create from scratch</span></span>
+          </button>
+        </div>
+
         {/* Mobile bottom tab bar — replaces sidebar on small screens */}
         <nav className="mobile-nav">
           <div className="mobile-nav-inner">
-            {[{id:"hub",icon:"🏠",label:"Hub"},{id:"events",icon:"☰",label:"Events"},{id:"tasks",icon:"☑",label:"Tasks"},{id:"checklist",icon:"📋",label:"List"},{id:"prep",icon:"⚡",label:"Prep"}].map(n=>{
+            {[{id:"hub",icon:<FA icon={faHouse}/>,label:"Hub"},{id:"events",icon:<FA icon={faBars}/>,label:"Events"},{id:"tasks",icon:<FA icon={faSquareCheck}/>,label:"Tasks"},{id:"checklist",icon:<FA icon={faClipboardList}/>,label:"List"},{id:"prep",icon:<FA icon={faBolt}/>,label:"Prep"}].map(n=>{
               const badge = n.id==="events"?events.length:n.id==="tasks"?events.flatMap(e=>e.tasks||[]).filter(t=>!t.done).length:0;
               return (
-                <button key={n.id} className={`mobile-nav-btn${view===n.id?" active":""}`} onClick={()=>setView(n.id)}>
+                <button key={n.id} className={`mobile-nav-btn${view===n.id?" active":""}`} onClick={()=>{setShowMobileTools(false);setView(n.id);}}>
                   <span className="mobile-nav-icon">{n.icon}</span>
                   {n.label}
                   {badge>0&&<span className="mobile-nav-badge">{badge}</span>}
                 </button>
               );
             })}
+            <button className={`mobile-nav-btn${showMobileTools?" active":""}`} onClick={()=>setShowMobileTools(v=>!v)}>
+              <span className="mobile-nav-icon"><FA icon={faWrench}/></span>
+              Tools
+            </button>
           </div>
         </nav>
       </div>
@@ -1629,7 +1698,7 @@ export default function CalendarConverter() {
       {showImport&&<ImportModal onImport={importEvents} onClose={()=>setShowImport(false)}/>}
 
       <div className="toast-wrap">
-        {toasts.map(t=><div key={t.id} className={`toast ${t.type}`}>{t.type==="success"?"✓":"✕"} {t.msg}</div>)}
+        {toasts.map(t=><div key={t.id} className={`toast ${t.type}`}>{t.type==="success"?<FA icon={faCheck}/>:<FA icon={faXmark}/>} {t.msg}</div>)}
       </div>
     </>
   );
